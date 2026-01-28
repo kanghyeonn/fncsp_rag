@@ -9,7 +9,8 @@ from rag.final.generator import (
     generate_report_item_from_vectordb,
     generate_report_item_from_file,
     generate_report_item_from_googlesearch,
-    generate_ipc_from_file_and_vectordb, generate_report_item_from_vf_cache
+    generate_ipc_from_file_and_vectordb, generate_report_item_from_vf_cache,
+    generate_market_with_fallback
 )
 
 from rag.final.collectors.kipris_client import download_statistics_data_from_kipris
@@ -58,6 +59,21 @@ def _generate_by_item(
         return {
             "title": title,
             "content": ipc_result,
+        }
+
+    if source == 'googlesearch' and title != '비즈니스 모델 역량진단':
+        result = generate_market_with_fallback(
+            company=company,
+            title=title,
+            task=task,
+            context_blocks=context_blocks,
+            file_path=business_plan_pdf,
+        )
+
+        return {
+            "title": title,
+            "content": result["parsed"].model_dump(),
+            "grounding": result["grounding"],
         }
 
     # 시장 규모 / 경쟁사 → Google Search 전용
@@ -196,6 +212,7 @@ PROMPT_MAP = {
 
 def generate(
     company: str,
+    biz_no: str,
     item_source_map: dict[int, str] | None = None,
     business_plan_pdf: Optional[str] = None,
     item_range: Optional[tuple[int, int]] = None,
@@ -219,7 +236,7 @@ def generate(
         # 2. retrieve context
         context_blocks = retrieve_context(
             query_vec=query_vec,
-            company=company,
+            biz_no=biz_no,
             sections=item["sections"],
         )
 

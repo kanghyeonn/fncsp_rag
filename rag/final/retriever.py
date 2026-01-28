@@ -10,7 +10,7 @@ SELECT
   (1 - (embedding <=> q.qv)) AS similarity
 FROM business_plan_embeddings, q
 WHERE (metadata->>'doc_type') = 'business_plan'
-  AND (metadata->>'company')  = %s
+  AND (metadata->>'biz_no')  = %s
   AND section = ANY(%s)
 ORDER BY embedding <=> q.qv
 LIMIT %s;
@@ -18,7 +18,7 @@ LIMIT %s;
 
 def retrieve_context(
     query_vec: list,
-    company: str,
+    biz_no: str,
     sections: List[str],
     k: int = 10
 ) -> List[Dict]:

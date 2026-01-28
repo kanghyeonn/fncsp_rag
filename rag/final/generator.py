@@ -10,7 +10,7 @@ from rag.final.prompts.ipc_prompt import IPC_PROMPT
 from rag.final.prompts.strict_instruction import STRICT_JSON_INSTRUCTION
 from rag.final.schemas.ipc_schemas import IPCAnalysisResult
 from rag.config import LLM_A, GEMINI_CLIENT
-from rag.final.utils import clean_json_string
+from rag.final.utils import clean_json_string, has_valid_market_size, expand_market_keywords, guess_base_market
 from rag.final.schemas.base_schemas import ReportItemResult
 from rag.final.schemas.market_schemas import MarketForecastAndCompetitors
 from rag.final.prompts.base_prompt import (
@@ -388,6 +388,52 @@ def generate_report_item_from_googlesearch(
         "parsed": parsed,
         "grounding": grounding.to_json_dict() if grounding else None,
     }
+
+def generate_market_with_fallback(
+    company: str,
+    title: str,
+    task: str,
+    context_blocks: list,
+    file_path: str | None = None,
+    max_level: int = 3,
+):
+    base_market = guess_base_market(context_blocks)  # 또는 context에서 추출한 시장명
+    print("-" * 15)
+    print("Base market : ", base_market)
+    print("-" * 15)
+
+
+    for level in range(max_level + 1):
+        expanded_task = (
+            task
+            + f"\n\n[시장 범위]\n{expand_market_keywords(base_market, level)}"
+        )
+
+        result = generate_report_item_from_googlesearch(
+            company=company,
+            title=title,
+            task=expanded_task,
+            context_blocks=context_blocks,
+            file_path=file_path,
+        )
+
+        parsed = result["parsed"]
+
+        if (
+            has_valid_market_size(parsed.overseas_market)
+            or has_valid_market_size(parsed.korea_market)
+        ):
+            parsed.overseas_market.method = (
+                parsed.overseas_market.method
+                + f" (상위 시장 레벨 {level} 적용)"
+                if parsed.overseas_market and parsed.overseas_market.method
+                else None
+            )
+            return result
+
+    # 전부 실패 시 → null 유지 (프롬프트 규칙 준수)
+    return result
+
 
 # =========================================================
 # Cache + File + Vector DB

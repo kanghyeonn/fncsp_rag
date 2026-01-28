@@ -43,3 +43,38 @@ def clean_json_string(text: str) -> str:
         text = text.rstrip() + "\n}"
 
     return text
+
+
+def expand_market_keywords(base_market: str, level: int) -> str:
+    """
+    level 0: 원래 시장
+    level 1: 기술 단위 시장
+    level 2: 산업 단위 시장
+    level 3: 최상위 시장
+    """
+    expansions = {
+        0: base_market,
+        1: f"{base_market} 관련 기술 시장",
+        2: f"{base_market} 산업 시장",
+        3: f"{base_market} 전체 산업"
+    }
+    return expansions.get(level, base_market)
+
+def has_valid_market_size(market) -> bool:
+    if not market:
+        return False
+    if not market.years or not market.values_int:
+        return False
+    if all(v is None for v in market.values_int):
+        return False
+    return True
+
+def guess_base_market(context_blocks: list) -> str:
+    if not context_blocks:
+        return "해당 산업"
+
+    for c in context_blocks:
+        if c["section"] in ("핵심 키워드", "창업아이템 소개"):
+            return c["content"][:80].replace("\n", " ")
+
+    return context_blocks[0]["content"][:80]

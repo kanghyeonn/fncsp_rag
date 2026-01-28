@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import Dict
 from pathlib import Path
+from rag.mysql.config import MYSQL_CONFIG
+from rag.mysql.mysql import fetch_cmp_list
 import json
 
 from rag.final.pipeline import generate
@@ -57,11 +59,14 @@ def save_report_to_json(company: str, results: Dict) -> list[str]:
 
 
 if __name__ == "__main__":
-    company = "(주) 킨사이트"
+
+    biz_no = ""
+    company = fetch_cmp_list(MYSQL_CONFIG, biz_no)[0].get("CMP_NM")
 
     # ✅ 단일 파이프라인 호출
     report = generate(
         company=company,
+        biz_no=biz_no,
         item_source_map={
             1: "file+vectordb",  # 미래기술대응역량
             2: "ipc+kipris",  # IP 대응역량
